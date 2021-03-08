@@ -11,14 +11,39 @@ public class AssetsLoader
     static string appUrl = Application.absoluteURL;
     //static string appUrl = "http://localhost:8000/";
 
-    static string modelsSufix = ".gltf";
+    static string modelsSuffix = ".gltf";
+    static string modelsFolder = "Models/";
+    static string environmentFolder = "Environments/";
+
+    static string texturesSuffix = ".png";
+    static string texturesFolder = "Textures/";
+
+    public static IEnumerator GetEnvironmentList(Action<List<string>> callback)
+    {
+#if UNITY_WEBGL //&& !UNITY_EDITOR
+        //yield return GetModelsFromUrl(callback);
+#else
+        callback(GetFilesInDir(environmentFolder, modelsSuffix));
+        yield return null;
+#endif
+    }
+
+    public static IEnumerator GetTexturesList(Action<List<string>> callback)
+    {
+#if UNITY_WEBGL //&& !UNITY_EDITOR
+        //yield return GetModelsFromUrl(callback);
+#else
+        callback(GetFilesInDir(texturesFolder, texturesSuffix));
+        yield return null;
+#endif
+    }
 
     public static IEnumerator GetModelsList(Action<List<string>> callback)
     {
 #if UNITY_WEBGL //&& !UNITY_EDITOR
         yield return GetModelsFromUrl(callback);
 #else
-        callback(GetFilesInDir(modelsSufix));
+        callback(GetFilesInDir(modelsFolder, modelsSuffix));
         yield return null;
 #endif
     }
@@ -26,7 +51,7 @@ public class AssetsLoader
     public static IEnumerator GetModelsFromUrl(Action<List<string>> callback)
     {
         List<string> modelNames = new List<string>();
-        string modelsList = appUrl + "StreamingAssets/models.txt";
+        string modelsList = appUrl + "StreamingAssets/Models/models.txt";
         //Debug.Log("Models list: " + modelsList);
         UnityWebRequest www = UnityWebRequest.Get(modelsList);
 
@@ -46,10 +71,10 @@ public class AssetsLoader
         callback(modelNames);
     }
 
-    protected static List<string> GetFilesInDir(string sufix)
+    protected static List<string> GetFilesInDir(string folder, string sufix)
     {
         List<string> modelNames = new List<string>();
-        string assetsPath = Application.dataPath + "/StreamingAssets";
+        string assetsPath = Application.dataPath + "/StreamingAssets/" + folder;
 
         string[] modelEntries = Directory.GetFiles(assetsPath);
         for (int i = 0; i < modelEntries.Length; i++)
@@ -79,9 +104,9 @@ public class AssetsLoader
         //TODO: implement
         return true;
 #else
-        string modelPath = Path.Combine(Application.dataPath + "/StreamingAssets", modelName);
+        string modelPath = Path.Combine(Application.dataPath + "/StreamingAssets/Models/", modelName);
 
-        string filePath = modelPath + modelsSufix;
+        string filePath = modelPath + modelsSuffix;
         //  Debug.Log("CheckIfModelExist " + filePath);
         if (File.Exists(filePath))
         {
@@ -94,11 +119,53 @@ public class AssetsLoader
 #endif
     }
 
+    public static IEnumerator ImportMaterial(string textureName, Action<Texture2D> callback)
+    {
+        string texturePath = Application.dataPath + "/StreamingAssets/Textures/" + textureName + texturesSuffix;
+        yield return LoadTexture(texturePath, callback);
+    }
+
+    public static IEnumerator ImportEnvironmentThumbnail(string textureName, Action<Texture2D> callback)
+    {
+        string texturePath = Application.dataPath + "/StreamingAssets/" + environmentFolder + textureName + texturesSuffix;
+        yield return LoadTexture(texturePath, callback);
+    }
+
+    private static IEnumerator LoadTexture(string fullPath, Action<Texture2D> callback)
+    {
+        byte[] pngBytes = File.ReadAllBytes(fullPath);
+
+        Texture2D tex = new Texture2D(2, 2);
+        tex.LoadImage(pngBytes);
+
+        callback(tex);
+        yield return null;
+    }
+
     public static IEnumerator ImportModel(string modelName, Action<GameObject> callback)
+    {
+#if UNITY_WEBGL //&& !UNITY_EDITOR
+        string modelPath = appUrl + "StreamingAssets/" + modelName + modelsSufix;
+#else
+        string modelPath = Application.dataPath + "/StreamingAssets/Models/" + modelName + modelsSuffix;
+#endif
+        yield return LoadGLTF(modelPath, callback);
+    }
+
+    public static IEnumerator ImportEnvironment(string environmentName, Action<GameObject> callback)
+    {
+#if UNITY_WEBGL //&& !UNITY_EDITOR
+        string modelPath = appUrl + "StreamingAssets/" + modelName + modelsSufix;
+#else
+        string modelPath = Application.dataPath + "/StreamingAssets/" + environmentFolder + environmentName + modelsSuffix;
+#endif
+        yield return LoadGLTF(modelPath, callback);
+    }
+
+    private static IEnumerator LoadGLTF(string modelPath, Action<GameObject> callback)
     {
         GameObject loadedObject = null;
 #if UNITY_WEBGL //&& !UNITY_EDITOR
-        string modelPath = appUrl + "StreamingAssets/" + modelName + modelsSufix;
         Debug.Log("ImportGLTF: " + modelPath);
         UnityWebRequest www = UnityWebRequest.Get(modelPath);
 
@@ -112,7 +179,6 @@ public class AssetsLoader
             loadedObject = Importer.LoadFromString(www.downloadHandler.text);
         }
 #else
-        string modelPath = Application.dataPath + "/StreamingAssets/" + modelName + modelsSufix;
         loadedObject = Importer.LoadFromFile(modelPath);
 #endif
         callback(loadedObject);

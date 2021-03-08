@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class EditorManager : MonoBehaviour
 {
+    public KeyboardWebXR keyboard;
+
     public XRCanvas propertiesMenu;
     public XRCanvas mainMenu;
 
@@ -19,6 +23,8 @@ public class EditorManager : MonoBehaviour
     public GlobalData globalData;
 
     public GameObject selectedObject;
+
+    public GameObject gizmoScalePrefab;
 
     void Awake()
     {
@@ -48,6 +54,7 @@ public class EditorManager : MonoBehaviour
         {
             //Debug.Log("Loading: " + AppManager.instance.currentSceneName);
             SaveCollection dataJson = ScioXRSceneManager.instance.LoadFromJson(AppManager.instance.GetScenePath());
+            ScioXRSceneManager.instance.SetEnvironment(dataJson.environment);
             ScioXRSceneManager.instance.CreateLoadedObjects(dataJson, true);
         }
     }
@@ -91,15 +98,52 @@ public class EditorManager : MonoBehaviour
     {
         selectedObject = editObject;
         propertiesMenu.Toggle();
-        if (propertiesMenu.IsActive())
+        if (IsPropertiesOpen())
         {
             
             //propertiesMenu.GetComponentInChildren<CodePanel>().LoadState();
             //load all data from game object
         }
     }
+
+    public bool IsPropertiesOpen()
+    {
+        return propertiesMenu.IsActive();
+    }
+
     public void DuplicateObject(GameObject cloneObject)
     {
+
         propertiesMenu.GetComponentInChildren<PropertiesPanel>().DuplicateButton(cloneObject);
+    }
+
+    public void ShowKeyboard(bool show, InputField textInput)
+    {
+        keyboard.textInput = textInput;
+        string text = textInput ? textInput.text : "";
+        ShowKeyboard(show, text);
+    }
+
+    public void ShowKeyboardTMP(bool show, TMP_InputField textInput)
+    {
+        keyboard.textInputTMP = textInput;
+        string text = textInput ? textInput.text : "";
+        ShowKeyboard(show, text);
+    }
+
+    private void ShowKeyboard(bool show, string text)
+    {
+        if (show)
+        {
+            keyboard.SetText(text);
+            keyboard.Enable();
+            keyboard.UpdatePosition();
+        }
+        else
+        {
+            keyboard.Disable();
+            keyboard.textInput = null;
+            keyboard.textInputTMP = null;
+        }
     }
 }
